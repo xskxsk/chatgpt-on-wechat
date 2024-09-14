@@ -16,7 +16,9 @@ import threading
 from common import memory, utils
 import base64
 import os
-import redis
+from datetime import datetime
+# import redis
+import pymysql
 
 # class LinkAIBot(Bot):
 #     # authentication failed
@@ -443,23 +445,35 @@ class LinkAIBot(Bot):
 
     def __init__(self):
         super().__init__()
-        self.redis_client = redis.StrictRedis(
-            host="localhost",
-            port=6379,
-            password=123456
-        )
+        # self.redis_client = redis.StrictRedis(
+        #     host="localhost",
+        #     port=6379,
+        #     password=123456
+        # )
+        self.mysql_client = pymysql.connect(host='localhost', port=3306, user='root', password='123456')
+
+    def __del__(self):
+        self.mysql_client.close()
 
     def reply(self, query, context: Context = None) -> Reply:
-        return process_query(query, self.redis_client)
+        return process_query(query, context, self.mysql_client)
 
     def _chat(self, query, context, retry_count=0) -> Reply:
-        return process_query(query, self.redis_client)
+        return process_query(query, context, self.mysql_client)
 
 
-def process_query(query, redis_client) -> Reply:
-    # return Reply(ReplyType.TEXT, query)
+def process_query(query, context, mysql_client) -> Reply:
+    print(f"from_user_nickname: {context.kwargs['msg'].actual_user_nickname}")
     print(f"msg: {query}")
-    redis_client.rpush("wechat_msg", query)
+    # # redis
+    # redis_client.rpush("wechat_msg", f"用户：{context.kwargs['msg'].actual_user_nickname}\n消息：{query}")
+    # mysql
+    with mysql_client.cursor() as cursor:
+        t = datetime.now().strftime('%Y-%m-%d %H:%M:%S%z')
+        sql = (f"INSERT INTO autogen.wechat_msg (content,from_user_nickname,create_time,group_name) "
+               f"VALUES('{query}','{context.kwargs['msg'].actual_user_nickname}','{t}','{context.kwargs['msg'].from_user_nickname}');")
+        cursor.execute(sql)
+        mysql_client.commit()
     return Reply(ReplyType.TEXT, "")
 
 

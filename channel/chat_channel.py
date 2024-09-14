@@ -178,6 +178,9 @@ class ChatChannel(Channel):
             # reply的发送步骤
             self._send_reply(context, reply)
 
+        if context.kwargs['msg'].from_user_nickname == "测试":    # 根据群名回复消息
+            self._send_reply(context, Reply(type=ReplyType.TEXT, content="test reply."))
+
     def _generate_reply(self, context: Context, reply: Reply = Reply()) -> Reply:
         e_context = PluginManager().emit_event(
             EventContext(
